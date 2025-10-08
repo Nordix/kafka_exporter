@@ -56,7 +56,7 @@ docker: build
 	@docker build -t "$(DOCKER_IMAGE_NAME):$(DOCKER_IMAGE_TAG)" --build-arg BIN_DIR=. .
 
 push: crossbuild
-	@echo ">> building and pushing multi-arch docker images, $(DOCKER_USERNAME),$(DOCKER_IMAGE_NAME),$(GIT_TAG_NAME)"
+	@echo ">> building and pushing multi-arch docker images"
 	@docker login -u $(DOCKER_USERNAME) -p $(DOCKER_PASSWORD)
 	@docker buildx create --use
 	@docker buildx build -t "$(DOCKER_USERNAME)/$(DOCKER_IMAGE_NAME):$(GIT_TAG_NAME)" \
@@ -64,20 +64,14 @@ push: crossbuild
 		--platform "$(DOCKER_PLATFORMS)" \
 		.
 
-release: promu github-release
+release: crossbuild
 	@echo ">> pushing binary to github with ghr"
 	@$(PROMU) crossbuild tarballs
-	@$(PROMU) release .tarballs
 
 promu:
 	@GOOS=$(UNAME_S) GOARCH=$(ARCH) $(GO) install github.com/prometheus/promu@v0.14.0
 PROMU=$(shell go env GOPATH)/bin/promu
 
-github-release:
-	@GOOS=$(shell uname -s | tr A-Z a-z) \
-		GOARCH=$(subst x86_64,amd64,$(patsubst i%86,386,$(shell uname -m))) \
-		$(GO) install github.com/github-release/github-release@v0.10.0
-	$(GO) mod tidy
 
 # Run go fmt against code
 .PHONY: fmt

@@ -1,0 +1,40 @@
+---
+name: Release Images
+on:
+  push:
+    # Sequence of patterns matched against refs/tags
+    tags:
+      - '*' # Push events to matching v*, i.e. v1.0, v20.15.10
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      DOCKER_PLATFORMS: linux/amd64,linux/s390x,linux/arm64,linux/ppc64le
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.24.0
+      - uses: olegtarasov/get-tag@v2.1
+        id: tagName
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker
+        uses: docker/login-action@v3
+        with:
+          registry: registry.nordix.org
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+      - name: Build and push multi-arch image
+        run: |
+          IMAGE="registry.nordix.org/allies/kafka_exporter/${{ steps.tagName.outputs.tag }}"
+          docker buildx build \
+          -t "${IMAGE}:${{ steps.tagName.outputs.tag }}" \
+          --platform "${{ env.DOCKER_PLATFORMS }}" \
+          --push \
+          .
